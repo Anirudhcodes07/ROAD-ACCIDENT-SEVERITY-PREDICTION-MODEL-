@@ -1,6 +1,5 @@
 # 🚗 Road Accident Severity Prediction
-### IML AAT Miniproject — BMS College of Engineering
-**24AM4PCIML | Dept. of Machine Learning | Faculty: Prof. Chethana V | 2025–26**
+
 
 ---
 

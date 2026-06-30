@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Road Accident Severity Predictor | IML AAT | BMSCE</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="wrap">
+    <span class="eyebrow">BMS College of Engineering · Dept. of Machine Learning · 24AM4PCIML</span>
+    <h1>🚗 Road Accident Severity Predictor</h1>
+    <p class="sub">Alternative Assessment Tool (AAT) Miniproject | Academic Year 2025–26 | Faculty: Prof. Chethana V</p>
+  </div>
+</header>
+
+<!-- ── Tab Nav ──────────────────────────────────────────────────────────────── -->
+<nav class="tab-nav">
+  <div class="wrap">
+    <button class="tab active" onclick="switchTab('predict')">🔮 Predict</button>
+    <button class="tab" onclick="switchTab('dataset')">📂 Dataset</button>
+    <button class="tab" onclick="switchTab('algorithms')">🧠 Algorithms</button>
+    <button class="tab" onclick="switchTab('results')">📊 Results</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 1 — PREDICT                                                           -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-predict" class="tab-content active wrap">
+  <div class="two-col">
+
+    <!-- Input Form -->
+    <section class="card">
+      <h2 class="card-title">Accident Scenario Input</h2>
+
+      <div class="form-group">
+        <label>ML Model</label>
+        <select id="model" onchange="updateAlgoHint()">
+          <option value="rf">🌳 Random Forest (Ensemble Bagging)</option>
+          <option value="svm">⚡ SVM — RBF Kernel</option>
+          <option value="nn">🧠 Neural Network (MLP 128→64→32)</option>
+        </select>
+        <div class="algo-hint" id="algoHint">Ensemble of 200 CART trees. No feature scaling required.</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Hour of Day <span class="hint">(0–23)</span></label>
+          <input type="number" id="hour" min="0" max="23" value="14"/>
+        </div>
+        <div class="form-group">
+          <label>Speed Limit <span class="hint">(km/h)</span></label>
+          <select id="speed">
+            <option value="30">30 km/h — Urban slow zone</option>
+            <option value="50" selected>50 km/h — Urban road</option>
+            <option value="70">70 km/h — Semi-urban</option>
+            <option value="100">100 km/h — State highway</option>
+            <option value="120">120 km/h — Expressway</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Weather Condition</label>
+          <select id="weather">
+            <option value="0">☀️ Fine / No wind</option>
+            <option value="1">🌧️ Rain / Strong wind</option>
+            <option value="2">🌫️ Fog / Snow</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Road Type</label>
+          <select id="road_type">
+            <option value="0">🏙️ Single carriageway</option>
+            <option value="1">🛣️ Dual carriageway</option>
+            <option value="2">🔄 Roundabout</option>
+            <option value="3">↕️ One-way street</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Light Condition</label>
+          <select id="light">
+            <option value="0">☀️ Daylight</option>
+            <option value="1">🌙 Darkness — street lit</option>
+            <option value="2">🌑 Darkness — no lighting</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Road Surface</label>
+          <select id="road_surface">
+            <option value="0">⚪ Dry</option>
+            <option value="1">💧 Wet</option>
+            <option value="2">❄️ Snow / Ice</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Number of Vehicles Involved <span class="hint">(1–5)</span></label>
+        <input type="number" id="vehicles" min="1" max="5" value="2"/>
+      </div>
+
+      <div class="toggle-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="alcohol"/>
+          <span class="toggle-box"></span>
+          Alcohol Involved
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="seatbelt" checked/>
+          <span class="toggle-box"></span>
+          Seatbelt Worn
+        </label>
+      </div>
+
+      <button class="btn-predict" id="predictBtn" onclick="predict()">
+        Predict Severity →
+      </button>
+    </section>
+
+    <!-- Result Panel -->
+    <section class="card result-card" id="resultCard">
+      <h2 class="card-title">Prediction Result</h2>
+
+      <div class="placeholder" id="placeholder">
+        <div class="placeholder-icon">🚦</div>
+        <p>Configure the scenario and click <strong>Predict Severity</strong></p>
+      </div>
+
+      <div class="hidden" id="resultContent">
+        <div class="severity-badge" id="severityBadge"></div>
+
+        <div class="proba-section">
+          <h3>Class Probabilities</h3>
+          <div class="proba-row">
+            <span class="proba-label slight-dot">Slight</span>
+            <div class="bar-bg"><div class="bar slight" id="barSlight"></div></div>
+            <span class="proba-pct" id="pctSlight">—</span>
+          </div>
+          <div class="proba-row">
+            <span class="proba-label serious-dot">Serious</span>
+            <div class="bar-bg"><div class="bar serious" id="barSerious"></div></div>
+            <span class="proba-pct" id="pctSerious">—</span>
+          </div>
+          <div class="proba-row">
+            <span class="proba-label fatal-dot">Fatal</span>
+            <div class="bar-bg"><div class="bar fatal" id="barFatal"></div></div>
+            <span class="proba-pct" id="pctFatal">—</span>
+          </div>
+        </div>
+
+        <div class="algo-used-box" id="algoUsedBox"></div>
+        <div class="tip-box" id="tipBox"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 2 — DATASET                                                           -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-dataset" class="tab-content wrap">
+  <section class="card full-card">
+    <h2 class="card-title">📂 Dataset Description</h2>
+
+    <div class="info-banner">
+      <strong>Schema Reference:</strong> UK Department for Transport — Road Safety Data (STATS19 open dataset)<br/>
+      <a href="https://data.gov.uk/dataset/cb7ae6f0-4be6-4935-9277-47e5ce24a11f" target="_blank">
+        data.gov.uk/dataset/road-safety-data</a> &nbsp;·&nbsp;
+      Size: <strong>3,000 records</strong> (statistically calibrated synthetic generation matching STATS19 2022 aggregate proportions)
+      &nbsp;·&nbsp; Split: <strong>80% train / 20% test</strong>, stratified by severity class
+    </div>
+
+    <h3 class="sub-heading">Independent Variables (9 Features)</h3>
+    <table class="data-table">
+      <thead>
+        <tr><th>#</th><th>Feature Name</th><th>Type</th><th>Values / Range</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td><code>Hour_of_Day</code></td><td>Integer</td><td>0 – 23</td><td>Hour at which the accident occurred (24-h clock)</td></tr>
+        <tr><td>2</td><td><code>Speed_Limit_kmh</code></td><td>Ordinal</td><td>30 / 50 / 70 / 100 / 120</td><td>Posted speed limit in km/h at accident location</td></tr>
+        <tr><td>3</td><td><code>Weather_Condition</code></td><td>Categorical</td><td>0=Fine, 1=Rain/Wind, 2=Fog/Snow</td><td>Prevailing weather at time of accident</td></tr>
+        <tr><td>4</td><td><code>Road_Type</code></td><td>Categorical</td><td>0=Single, 1=Dual, 2=Roundabout, 3=One-way</td><td>Classification of road layout</td></tr>
+        <tr><td>5</td><td><code>Light_Condition</code></td><td>Categorical</td><td>0=Daylight, 1=Dark-lit, 2=Dark-unlit</td><td>Ambient lighting at time of accident</td></tr>
+        <tr><td>6</td><td><code>Number_of_Vehicles</code></td><td>Integer</td><td>1 – 5</td><td>Total vehicles involved in the accident</td></tr>
+        <tr><td>7</td><td><code>Alcohol_Involved</code></td><td>Binary</td><td>0=No, 1=Yes</td><td>Whether any driver had alcohol involvement</td></tr>
+        <tr><td>8</td><td><code>Seatbelt_Worn</code></td><td>Binary</td><td>0=No, 1=Yes</td><td>Whether occupants were wearing seatbelts</td></tr>
+        <tr><td>9</td><td><code>Road_Surface</code></td><td>Categorical</td><td>0=Dry, 1=Wet, 2=Snow/Ice</td><td>Road surface condition at time of accident</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub-heading">Dependent Variable (Target)</h3>
+    <table class="data-table">
+      <thead>
+        <tr><th>Code</th><th>Label</th><th>STATS19 Equivalent</th><th>Approx. % in Dataset</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td><span class="badge-slight">Slight</span></td><td>Severity 3</td><td>~80%</td><td>Minor injuries, vehicle damage; no hospitalisation</td></tr>
+        <tr><td>1</td><td><span class="badge-serious">Serious</span></td><td>Severity 2</td><td>~15%</td><td>Hospitalisation required; significant injury</td></tr>
+        <tr><td>2</td><td><span class="badge-fatal">Fatal</span></td><td>Severity 1</td><td>~5%</td><td>At least one fatality resulted from the accident</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub-heading">Pre-processing Pipeline</h3>
+    <ol class="steps-list">
+      <li><strong>Generation:</strong> 3,000 samples created with structured probabilistic sampling; risk score calibrated to match published STATS19 2022 class proportions.</li>
+      <li><strong>Train/Test Split:</strong> 80/20 split using <code>train_test_split</code> with <code>stratify=y</code> to preserve class ratios in both sets.</li>
+      <li><strong>Feature Scaling:</strong> <code>StandardScaler</code> (z-score normalisation: z = (x − μ) / σ) applied to SVM and Neural Network inputs. Fitted on training data only; applied to test data to prevent data leakage.</li>
+      <li><strong>Class Imbalance:</strong> Handled via <code>class_weight='balanced'</code> in RF and SVM; weights inversely proportional to class frequency.</li>
+    </ol>
+  </section>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 3 — ALGORITHMS                                                        -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-algorithms" class="tab-content wrap">
+
+  <!-- Random Forest -->
+  <section class="card full-card algo-card">
+    <div class="algo-header rf-accent">
+      <span class="algo-num">01</span>
+      <div>
+        <h2>Random Forest Classifier</h2>
+        <span class="algo-type">Ensemble Learning — Bootstrap Aggregating (Bagging)</span>
+      </div>
+    </div>
+    <div class="algo-body">
+      <div class="algo-col">
+        <h3>How It Works</h3>
+        <p>Random Forest builds <strong>200 independent Decision Trees</strong> (CART), each trained on a random bootstrap sample of the training data (sampling with replacement). At every split, only <strong>√p features</strong> are considered (where p = number of features = 9, so √9 = 3 features per split). This decorrelates trees and reduces variance. Final prediction is the <strong>majority vote</strong> across all 200 trees.</p>
+
+        <h3 class="mt">Mathematical Basis</h3>
+        <div class="math-box">
+          <p><strong>Gini Impurity at node t:</strong></p>
+          <code>G(t) = 1 − Σₖ p(k|t)²</code>
+          <p class="mt-sm"><strong>Information Gain (split criterion):</strong></p>
+          <code>IG = G(parent) − Σ (|child| / |parent|) × G(child)</code>
+          <p class="mt-sm"><strong>Ensemble prediction (majority vote):</strong></p>
+          <code>ŷ = mode { h₁(x), h₂(x), … , h₂₀₀(x) }</code>
+        </div>
+      </div>
+      <div class="algo-col">
+        <h3>Hyperparameters Used</h3>
+        <table class="param-table">
+          <tr><th>Parameter</th><th>Value</th><th>Reason</th></tr>
+          <tr><td>n_estimators</td><td>200</td><td>More trees → lower variance</td></tr>
+          <tr><td>max_depth</td><td>12</td><td>Prevents overfitting</td></tr>
+          <tr><td>min_samples_split</td><td>5</td><td>Avoids over-specific splits</td></tr>
+          <tr><td>class_weight</td><td>balanced</td><td>Handles class imbalance</td></tr>
+          <tr><td>criterion</td><td>gini</td><td>Gini impurity split</td></tr>
+        </table>
+        <h3 class="mt">Why Suitable</h3>
+        <ul class="why-list">
+          <li>Handles mixed numeric + categorical integer features natively</li>
+          <li>No feature scaling required</li>
+          <li>Provides built-in feature importance rankings</li>
+          <li>Robust to outliers and class imbalance</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SVM -->
+  <section class="card full-card algo-card">
+    <div class="algo-header svm-accent">
+      <span class="algo-num">02</span>
+      <div>
+        <h2>Support Vector Machine (SVM)</h2>
+        <span class="algo-type">Kernel-based Discriminative Classifier — RBF Kernel | One-vs-One Multi-class</span>
+      </div>
+    </div>
+    <div class="algo-body">
+      <div class="algo-col">
+        <h3>How It Works</h3>
+        <p>SVM finds the <strong>maximum-margin hyperplane</strong> separating classes in a transformed feature space defined by the kernel function. The <strong>RBF (Radial Basis Function) kernel</strong> maps data to an infinite-dimensional space, allowing non-linear decision boundaries. For 3 classes, <strong>One-vs-One (OvO)</strong> strategy trains <strong>3 binary SVMs</strong> (Slight vs Serious, Slight vs Fatal, Serious vs Fatal); final label determined by majority vote. Probabilities are obtained via <strong>Platt scaling</strong>.</p>
+
+        <h3 class="mt">Mathematical Basis</h3>
+        <div class="math-box">
+          <p><strong>RBF Kernel:</strong></p>
+          <code>k(xᵢ, xⱼ) = exp(−γ ‖xᵢ − xⱼ‖²)</code>
+          <p class="mt-sm"><strong>Primal optimisation (soft-margin):</strong></p>
+          <code>min ½‖w‖² + C Σᵢ ξᵢ &nbsp; s.t. yᵢ(wᵀxᵢ + b) ≥ 1 − ξᵢ</code>
+          <p class="mt-sm"><strong>Decision function:</strong></p>
+          <code>f(x) = sign( Σᵢ αᵢ yᵢ k(xᵢ, x) + b )</code>
+        </div>
+      </div>
+      <div class="algo-col">
+        <h3>Hyperparameters Used</h3>
+        <table class="param-table">
+          <tr><th>Parameter</th><th>Value</th><th>Reason</th></tr>
+          <tr><td>kernel</td><td>rbf</td><td>Non-linear boundaries</td></tr>
+          <tr><td>C</td><td>10</td><td>High penalty → tight margin</td></tr>
+          <tr><td>gamma</td><td>scale</td><td>Auto: 1/(n_features × var(X))</td></tr>
+          <tr><td>probability</td><td>True</td><td>Enables Platt scaling</td></tr>
+          <tr><td>class_weight</td><td>balanced</td><td>Handles imbalance</td></tr>
+        </table>
+        <h3 class="mt">Why Suitable</h3>
+        <ul class="why-list">
+          <li>Strong theoretical generalisation bounds (VC dimension)</li>
+          <li>RBF kernel models complex feature interactions (e.g. speed × alcohol)</li>
+          <li>Effective in moderate-dimensional spaces (~10 features)</li>
+          <li>⚠️ Requires StandardScaler pre-processing</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Neural Network -->
+  <section class="card full-card algo-card">
+    <div class="algo-header nn-accent">
+      <span class="algo-num">03</span>
+      <div>
+        <h2>Multilayer Perceptron (Neural Network)</h2>
+        <span class="algo-type">Feedforward ANN — Architecture: Input(9) → 128 → 64 → 32 → Output(3)</span>
+      </div>
+    </div>
+    <div class="algo-body">
+      <div class="algo-col">
+        <h3>How It Works</h3>
+        <p>The MLP consists of an <strong>input layer (9 neurons)</strong>, three hidden layers (<strong>128 → 64 → 32 neurons</strong> with ReLU activation), and an <strong>output layer (3 neurons, Softmax)</strong>. Training uses <strong>Backpropagation</strong> — the gradient of the cross-entropy loss is propagated backwards using the chain rule to update weights via the <strong>Adam optimiser</strong>. <strong>Early stopping</strong> monitors validation loss and halts training when it stops improving (avoids overfitting).</p>
+
+        <h3 class="mt">Mathematical Basis</h3>
+        <div class="math-box">
+          <p><strong>Neuron computation:</strong></p>
+          <code>z = Σᵢ (wᵢ xᵢ) + b &nbsp;;&nbsp; a = ReLU(z) = max(0, z)</code>
+          <p class="mt-sm"><strong>Softmax output (probabilities):</strong></p>
+          <code>P(class k) = exp(zₖ) / Σⱼ exp(zⱼ)</code>
+          <p class="mt-sm"><strong>Loss function (cross-entropy):</strong></p>
+          <code>L = − Σₖ yₖ log(P(class k))</code>
+          <p class="mt-sm"><strong>Adam weight update:</strong></p>
+          <code>w ← w − α × m̂ / (√v̂ + ε) &nbsp; (adaptive learning rate)</code>
+        </div>
+      </div>
+      <div class="algo-col">
+        <h3>Hyperparameters Used</h3>
+        <table class="param-table">
+          <tr><th>Parameter</th><th>Value</th><th>Reason</th></tr>
+          <tr><td>hidden_layers</td><td>(128, 64, 32)</td><td>Graduated depth</td></tr>
+          <tr><td>activation</td><td>relu</td><td>Avoids vanishing gradient</td></tr>
+          <tr><td>solver</td><td>adam</td><td>Adaptive learning rate</td></tr>
+          <tr><td>alpha (L2)</td><td>0.001</td><td>Weight regularisation</td></tr>
+          <tr><td>early_stopping</td><td>True</td><td>Prevents overfitting</td></tr>
+          <tr><td>max_iter</td><td>500</td><td>Maximum training epochs</td></tr>
+        </table>
+        <h3 class="mt">Why Suitable</h3>
+        <ul class="why-list">
+          <li>Learns complex non-linear feature interactions automatically</li>
+          <li>Serves as deep learning baseline for comparison</li>
+          <li>L2 regularisation + early stopping prevent overfitting</li>
+          <li>⚠️ Requires StandardScaler pre-processing</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 4 — RESULTS                                                           -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-results" class="tab-content wrap">
+
+  <!-- Metrics table -->
+  <section class="card full-card">
+    <h2 class="card-title">📊 Model Performance Summary</h2>
+    <table class="data-table">
+      <thead>
+        <tr><th>Model</th><th>Test Accuracy</th><th>5-Fold CV Accuracy</th><th>Weighted F1</th><th>Precision</th><th>Recall</th></tr>
+      </thead>
+      <tbody>
+        {% for name, v in metrics.items() %}
+        <tr>
+          <td><strong>{{ name }}</strong></td>
+          <td>{{ "%.2f"|format(v.accuracy * 100) }}%</td>
+          <td>{{ "%.2f"|format(v.cv_accuracy * 100) }}%</td>
+          <td>{{ "%.2f"|format(v.f1 * 100) }}%</td>
+          <td>{{ "%.2f"|format(v.precision * 100) }}%</td>
+          <td>{{ "%.2f"|format(v.recall * 100) }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="table-note">Evaluation set: 600 samples (20% hold-out, stratified). CV: 5-fold StratifiedKFold on training set.</p>
+  </section>
+
+  <!-- Plots -->
+  <section class="card full-card">
+    <h2 class="card-title">Visual Analysis</h2>
+    <div class="plots-grid">
+      <figure class="plot-card">
+        <img src="{{ url_for('static', filename='model_comparison.png') }}" alt="Model Comparison"/>
+        <figcaption>Model Comparison — Accuracy, F1 &amp; CV Accuracy</figcaption>
+      </figure>
+      <figure class="plot-card">
+        <img src="{{ url_for('static', filename='confusion_matrix.png') }}" alt="Confusion Matrices"/>
+        <figcaption>Confusion Matrices — All Three Models</figcaption>
+      </figure>
+      <figure class="plot-card">
+        <img src="{{ url_for('static', filename='feature_importance.png') }}" alt="Feature Importance"/>
+        <figcaption>Feature Importance — Random Forest</figcaption>
+      </figure>
+      <figure class="plot-card">
+        <img src="{{ url_for('static', filename='severity_distribution.png') }}" alt="Class Distribution"/>
+        <figcaption>Accident Severity Distribution in Dataset</figcaption>
+      </figure>
+      <figure class="plot-card">
+        <img src="{{ url_for('static', filename='per_class_metrics.png') }}" alt="Per-Class Metrics"/>
+        <figcaption>Per-Class Precision / Recall / F1 — Random Forest</figcaption>
+      </figure>
+    </div>
+  </section>
+</div>
+
+<!-- ── Footer ───────────────────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <p>IML AAT Miniproject &nbsp;·&nbsp; 24AM4PCIML &nbsp;·&nbsp; Dept. of Machine Learning &nbsp;·&nbsp; BMSCE, Bengaluru &nbsp;·&nbsp; 2025–26</p>
+  <p>Faculty In-charge: <strong>Prof. Chethana V</strong></p>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

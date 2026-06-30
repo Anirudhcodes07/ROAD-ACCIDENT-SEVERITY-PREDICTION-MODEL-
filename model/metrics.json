@@ -1,0 +1,23 @@
+{
+  "Random Forest": {
+    "accuracy": 0.8367,
+    "cv_accuracy": 0.8287,
+    "f1": 0.8373,
+    "precision": 0.8389,
+    "recall": 0.8367
+  },
+  "SVM (RBF)": {
+    "accuracy": 0.8417,
+    "cv_accuracy": 0.8371,
+    "f1": 0.8419,
+    "precision": 0.8421,
+    "recall": 0.8417
+  },
+  "Neural Network": {
+    "accuracy": 0.86,
+    "cv_accuracy": 0.8521,
+    "f1": 0.8596,
+    "precision": 0.8608,
+    "recall": 0.86
+  }
+}
